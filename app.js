@@ -11,7 +11,14 @@ connectDB();
 
 app.use(cors());
 app.use(express.json());
+// ...
 app.use(express.static('public'));
+
+// Route par défaut : redirige vers /login.html
+app.get('/', (req, res) => {
+    res.redirect('/login.html');
+});
+
 
 // Routes
 app.use('/api/users', userRoutes);
