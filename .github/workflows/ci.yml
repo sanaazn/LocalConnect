@@ -1,0 +1,28 @@
+name: Node.js CI
+
+on:
+  push:
+    branches:
+      - '*'  # Déclenche le CI sur n'importe quelle branche lors d'un push
+  pull_request:
+    branches:
+      - '*'  # Déclenche le CI sur n'importe quelle branche lors d'une pull request
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Spécifie l'environnement d'exécution (ici, Ubuntu)
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2  # Permet à GitHub Actions de récupérer votre code source
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'  # Spécifie la version de Node.js à utiliser
+
+      - name: Install dependencies
+        run: npm install  # Installe les dépendances de votre projet Node.js
+
+      - name: Run tests
+        run: npm test  # Exécute les tests définis dans "npm test"
