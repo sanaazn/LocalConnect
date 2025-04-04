@@ -30,6 +30,7 @@ const createReport = async (req, res) => {
 };
 
 
+
 const deleteReport = async (req, res) => {
   try {
     const report = await Report.findById(req.params.id);
@@ -47,4 +48,35 @@ const deleteReport = async (req, res) => {
   }
 };
 
-module.exports = { getReports, createReport, deleteReport };
+const modifyReport = async (req, res) => {
+  try {
+    const report = await Report.findById(req.params.id);
+    if (!report) return res.status(404).json({ message: 'Report not found' });
+
+    if (report.createdBy.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const { title, description, category, location } = req.body;
+
+    // Update only provided fields
+    if (title) report.title = title;
+    if (description) report.description = description;
+    if (category) report.category = category;
+    if (location) report.location = location;
+
+    const updatedReport = await report.save();
+    res.json(updatedReport);
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating report', error: err.message });
+  }
+};
+
+module.exports = {
+  getReports,
+  createReport,
+  deleteReport,
+  modifyReport,
+};
+
+
