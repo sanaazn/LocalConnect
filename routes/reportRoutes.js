@@ -6,6 +6,6 @@ const { createReport, getReports, deleteReport,modifyReport } = require('../cont
 router.get('/', getReports);
 router.post('/', auth, createReport);  // Use the auth middleware for creating reports
 router.delete('/:id', auth, deleteReport); 
-router.put(':id', auth, modifyReport);  // 👈 update endpoint
+router.put('/:id', auth, modifyReport);  // 👈 update endpoint
 
 module.exports = router;
