@@ -13,6 +13,38 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
+    const token = localStorage.getItem("token");
+
+if (!token) {
+  alert("You need to log in first!");
+  window.location.href = "login.html";  // Redirect to login if token is not available
+} else {
+  // Use the token to fetch reports or add a new one
+  fetchReports();
+}
+
+async function fetchReports() {
+  try {
+    const response = await fetch("http://localhost:5000/api/reports", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "x-auth-token": token,  // Include the JWT token
+      },
+    });
+
+    const reports = await response.json();
+    
+    if (response.ok) {
+      console.log(reports);  // Do something with the reports (e.g., display them on the map)
+    } else {
+      alert(reports.message || "Failed to fetch reports");
+    }
+  } catch (err) {
+    console.error("Error fetching reports:", err);
+    alert("An error occurred while fetching reports");
+  }
+}
     const map = L.map('map').setView([45.7640, 4.8357], 13); // Center on Lyon
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
