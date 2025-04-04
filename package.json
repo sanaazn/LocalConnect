@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "test": "jest" 
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.9",
+    "supertest": "^7.1.0"
   }
 }
