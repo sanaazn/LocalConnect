@@ -67,6 +67,55 @@ describe('Test Report API', () => {
     afterAll(async () => {
         await mongoose.connection.close();
       });
+    
+          // Test de mise à jour d’un rapport
+    it('should update an existing report', async () => {
+        // 1. Créer un rapport à modifier
+        const report = await Report.create({
+            title: 'Old Title',
+            description: 'Old Description',
+            category: 'info',
+            location: { type: 'Point', coordinates: [10.0, 20.0] },
+            timestamp: new Date(),
+            createdBy: userId,
+        });
+
+        // 2. Modifier le rapport
+        const response = await request(app)
+            .put(`/api/reports/${report._id}`)
+            .set('x-auth-token', token)
+            .send({
+                title: 'Updated Title',
+                description: 'Updated Description',
+                category: 'alert',
+            });
+
+        expect(response.status).toBe(200);
+        expect(response.body.title).toBe('Updated Title');
+        expect(response.body.description).toBe('Updated Description');
+    });
+
+    // Test de suppression d’un rapport
+    it('should delete a report', async () => {
+        // 1. Créer un rapport à supprimer
+        const report = await Report.create({
+            title: 'Temp to Delete',
+            description: 'Temporary',
+            category: 'tip',
+            location: { type: 'Point', coordinates: [5.0, 15.0] },
+            timestamp: new Date(),
+            createdBy: userId,
+        });
+
+        // 2. Supprimer le rapport
+        const response = await request(app)
+            .delete(`/api/reports/${report._id}`)
+            .set('x-auth-token', token);
+
+        expect(response.status).toBe(200);
+        expect(response.body.message).toBe('Report deleted successfully');
+    });
+
       
       
 
