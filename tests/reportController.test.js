@@ -64,4 +64,9 @@ describe('Test Report API', () => {
         expect(response.body.length).toBeGreaterThan(0);  // Il doit y avoir au moins un rapport
     });
 
+    afterAll(async () => {
+        await mongoose.connection.close();
+      });
+      
+
 });
