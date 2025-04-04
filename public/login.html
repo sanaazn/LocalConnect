@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Login | CityWatch</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
     <!-- Police Google Fonts -->
     <link
@@ -37,7 +37,6 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             padding: 2rem;
         }
-
         h1 {
             text-align: center;
             margin-bottom: 1rem;
@@ -96,6 +95,52 @@
         .login-footer a:hover {
             color: #333;
         }
+
+        /* Toast Container (en overlay, en bas à droite) */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 9999;
+        }
+
+        /* Style de base du toast */
+        .toast {
+            min-width: 200px;
+            background: #333;
+            color: #fff;
+            padding: 0.8rem 1rem;
+            border-radius: 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            opacity: 0;
+            animation: fadeIn 0.3s forwards;
+            font-size: 0.9rem;
+        }
+
+        /* Couleur type success / error */
+        .toast-success {
+            background: #28a745; /* vert */
+        }
+        .toast-error {
+            background: #dc3545; /* rouge */
+        }
+
+        /* Animation fadeIn */
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Animation fadeOut (quand on veut le retirer) */
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -112,7 +157,39 @@
     </div>
 </div>
 
+<!-- Container pour les toasts (notifications) -->
+<div id="toast-container"></div>
+
 <script>
+    // -- UTILS : Créer et afficher un toast
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+
+        // Créer l'élément toast
+        const toast = document.createElement('div');
+        toast.classList.add('toast');
+        if (type === 'success') {
+            toast.classList.add('toast-success');
+        } else if (type === 'error') {
+            toast.classList.add('toast-error');
+        }
+        toast.innerText = message;
+
+        // Ajouter le toast dans le container
+        container.appendChild(toast);
+
+        // Retirer après 3s
+        setTimeout(() => {
+            // On anime fadeOut en changeant l'animation
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            // Retirer du DOM après l'animation
+            setTimeout(() => {
+                container.removeChild(toast);
+            }, 300);
+        }, 3000); // 3 secondes avant de disparaître
+    }
+
+    // -- SCRIPT
     document.getElementById('loginForm').addEventListener('submit', async (event) => {
         event.preventDefault();
 
@@ -132,18 +209,22 @@
             const data = await response.json();
 
             if (response.ok) {
-                alert('Login successful!');
-                // Stocke le JWT en localStorage
+                // Toast success
+                showToast('Login successful!', 'success');
+                // Stocker le JWT
                 localStorage.setItem('token', data.token);
 
-                // Redirection immédiate vers la map
-                window.location.href = "map.html";
+                // Redirection après un court délai ou immédiatement
+                setTimeout(() => {
+                    window.location.href = "map.html";
+                }, 1000);
             } else {
-                alert(`Login failed: ${data.msg}`);
+                // Toast error
+                showToast(`Login failed: ${data.msg}`, 'error');
             }
         } catch (error) {
             console.error(error);
-            alert('An error occurred. Please try again later.');
+            showToast('An error occurred. Please try again later.', 'error');
         }
     });
 </script>
