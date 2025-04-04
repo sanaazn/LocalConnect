@@ -125,7 +125,7 @@
     .popup-button:hover {
       background: #0056b3;
     }
-    
+
     /* Modal Edit Form */
     .modal {
       display: none;
@@ -165,6 +165,40 @@
       font-weight: bold;
       cursor: pointer;
     }
+
+    /* Toast Container (en overlay, en bas à droite) */
+    #toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 9999;
+    }
+    .toast {
+      min-width: 200px;
+      background: #333;
+      color: #fff;
+      padding: 0.8rem 1rem;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      opacity: 0;
+      animation: fadeIn 0.3s forwards;
+      font-size: 0.9rem;
+    }
+    .toast-success {
+      background: #28a745; /* vert */
+    }
+    .toast-error {
+      background: #dc3545; /* rouge */
+    }
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+    @keyframes fadeOut {
+      to { opacity: 0; }
+    }
   </style>
 
   <!-- Police Google Fonts -->
@@ -178,10 +212,8 @@
 <div id="app">
   <!-- SIDEBAR -->
   <div id="sidebar">
-    <h2>Reports</h2>
-    <div id="reportsList">
-      <!-- Liste dynamique des reports -->
-    </div>
+    <h2>My Reports</h2>
+    <div id="reportsList"></div>
   </div>
 
   <!-- MAP -->
@@ -219,11 +251,40 @@
   </div>
 </div>
 
+<!-- Container pour les toasts -->
+<div id="toast-container"></div>
+
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-  // Parse JWT Token
+  /* ==========================
+     1) Toast Logic
+  ========================== */
+  function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.classList.add('toast');
+    if (type === 'success') {
+      toast.classList.add('toast-success');
+    } else if (type === 'error') {
+      toast.classList.add('toast-error');
+    }
+    toast.innerText = message;
+    container.appendChild(toast);
+
+    // Retirer après 3s
+    setTimeout(() => {
+      toast.style.animation = 'fadeOut 0.3s forwards';
+      setTimeout(() => {
+        container.removeChild(toast);
+      }, 300);
+    }, 3000);
+  }
+
+  /* ==========================
+     2) JWT Parsing
+  ========================== */
   function parseJwt(token) {
     try {
       const base64Payload = token.split('.')[1];
@@ -235,30 +296,33 @@
     }
   }
 
-  // 1. Vérifier le token
   const token = localStorage.getItem('token');
   if (!token) {
-    alert('You must log in first!');
+    showToast('You must log in first!', 'error');
     window.location.href = 'login.html';
   }
 
-  // Parse current user from token
   const currentUser = parseJwt(token);
   if (!currentUser || !currentUser.userId) {
-    alert('Invalid authentication. Please log in again.');
+    showToast('Invalid authentication. Please log in again.', 'error');
     localStorage.removeItem('token');
     window.location.href = 'login.html';
   }
 
-  // 2. Initialiser la carte Leaflet
-  const map = L.map('map').setView([45.7640, 4.8357], 13); // Lyon
+  /* ==========================
+     3) Initialize Map
+  ========================== */
+  const map = L.map('map').setView([45.7640, 4.8357], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  // 3. Charger la liste des reports
+  /* ==========================
+     4) Fetch Reports
+  ========================== */
   let allReports = [];
-  let markers = []; // Keep track of all markers
+  let markers = [];
+
   fetchReports();
 
   async function fetchReports() {
@@ -275,26 +339,27 @@
       }
       const reports = await response.json();
       allReports = reports;
-      
-      // Clear existing markers
+
+      // Nettoyer d'anciens marqueurs
       markers.forEach(marker => map.removeLayer(marker));
       markers = [];
-      
+
       displayReportsOnMap(reports);
       displayReportsInSidebar(reports);
     } catch (err) {
       console.error('Error fetching reports:', err);
-      alert('Error fetching reports: ' + err.message);
+      showToast('Error fetching reports: ' + err.message, 'error');
     }
   }
 
-  // 4. Afficher les marqueurs sur la carte
+  /* ==========================
+     5) Display Markers
+  ========================== */
   function displayReportsOnMap(reports) {
     reports.forEach(report => {
-      // On récupère les valeurs brutes
       let [rawLng, rawLat] = report.location.coordinates;
 
-      // S'ils sont au format { "$numberDecimal": "4.73..." }, on convertit en float
+      // Convertir { $numberDecimal: "4.73" } en float
       if (rawLng && typeof rawLng === 'object' && rawLng.$numberDecimal) {
         rawLng = parseFloat(rawLng.$numberDecimal);
       }
@@ -302,16 +367,14 @@
         rawLat = parseFloat(rawLat.$numberDecimal);
       }
 
-      // On vérifie que ce sont bien des nombres
       if (isNaN(rawLng) || isNaN(rawLat)) {
         console.warn('Coordonnées invalides pour report:', report);
-        return; // on ignore ce report
+        return;
       }
 
-      // On place le marker (Leaflet veut [lat, lng], donc on inverse l'ordre)
       const marker = L.marker([rawLat, rawLng]).addTo(map);
-      markers.push(marker); // Track the marker
-      
+      markers.push(marker);
+
       const popupContent = `
         <b>${report.title}</b><br>
         ${report.description}<br>
@@ -322,14 +385,15 @@
     });
   }
 
-  // 5. Afficher la liste dans la sidebar
+  /* ==========================
+     6) Display in Sidebar
+  ========================== */
   function displayReportsInSidebar(reports) {
     const listContainer = document.getElementById('reportsList');
     listContainer.innerHTML = '';
 
-    // Filtrer uniquement les rapports créés par l'utilisateur actuel
+    // Filtrer uniquement les rapports créés par l'utilisateur
     const myReports = reports.filter(report => {
-      // Check if createdBy is an object or string ID
       const reportUserId = report.createdBy?._id || report.createdBy;
       return reportUserId === currentUser.userId;
     });
@@ -350,8 +414,8 @@
       const metaEl = document.createElement('div');
       metaEl.className = 'report-meta';
       metaEl.innerHTML = `
-        Category: ${report.category} <br>
-        Description: ${report.description} <br>
+        Category: ${report.category}<br>
+        Description: ${report.description}
       `;
 
       const actionsEl = document.createElement('div');
@@ -382,24 +446,23 @@
     });
   }
 
-  // 6. Ajouter un report en cliquant sur la carte
+  /* ==========================
+     7) Add a Report on Map Click
+  ========================== */
   map.on('click', (e) => {
     const { lat, lng } = e.latlng;
     const popupContent = `
       <div>
         <label class="popup-label">Title</label>
         <input type="text" id="reportTitle" class="popup-input" placeholder="Report title" />
-
         <label class="popup-label">Description</label>
         <input type="text" id="reportDescription" class="popup-input" placeholder="Description" />
-
         <label class="popup-label">Category</label>
         <select id="reportCategory" class="popup-input">
           <option value="alert">Alert</option>
           <option value="tip">Tip</option>
           <option value="info">Info</option>
         </select>
-
         <button class="popup-button" id="saveReportBtn">Save</button>
       </div>
     `;
@@ -408,62 +471,62 @@
             .setContent(popupContent)
             .openOn(map);
 
-    // On attend que le DOM de la popup soit prêt
     setTimeout(() => {
       const saveBtn = document.getElementById('saveReportBtn');
-      if (saveBtn) {
-        saveBtn.addEventListener('click', async () => {
-          const title = document.getElementById('reportTitle').value;
-          const description = document.getElementById('reportDescription').value;
-          const category = document.getElementById('reportCategory').value;
+      if (!saveBtn) return;
+      saveBtn.addEventListener('click', async () => {
+        const title = document.getElementById('reportTitle').value.trim();
+        const description = document.getElementById('reportDescription').value.trim();
+        const category = document.getElementById('reportCategory').value;
 
-          if (!title || !description) {
-            alert('Please fill in title and description');
-            return;
-          }
+        if (!title || !description) {
+          showToast('Please fill in title and description', 'error');
+          return;
+        }
 
-          const newReport = {
-            title,
-            description,
-            category,
-            location: {
-              type: 'Point',
-              coordinates: [lng, lat] // [longitude, latitude]
+        const newReport = {
+          title,
+          description,
+          category,
+          location: {
+            type: 'Point',
+            coordinates: [lng, lat]
+          },
+          timestamp: new Date().toISOString()
+        };
+
+        try {
+          const response = await fetch('http://localhost:5000/api/reports', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-auth-token': token
             },
-            timestamp: new Date().toISOString()
-          };
+            body: JSON.stringify(newReport)
+          });
 
-          try {
-            const response = await fetch('http://localhost:5000/api/reports', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-auth-token': token
-              },
-              body: JSON.stringify(newReport)
-            });
-            
-            if (!response.ok) {
-              const data = await response.json();
-              throw new Error(data.message || 'Error creating report');
-            }
-
-            alert('Report created!');
-            map.closePopup();
-            fetchReports(); // recharger
-          } catch (err) {
-            console.error(err);
-            alert('Failed to create report: ' + err.message);
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.message || 'Error creating report');
           }
-        });
-      }
+
+          showToast('Report created!', 'success');
+          map.closePopup();
+          fetchReports();
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to create report: ' + err.message, 'error');
+        }
+      });
     }, 50);
   });
 
-  // 7. Supprimer un report
+  /* ==========================
+     8) Delete a Report
+  ========================== */
   async function handleDeleteReport(reportId) {
     if (!confirm('Are you sure you want to delete this report?')) return;
-    
+
     try {
       const response = await fetch(`http://localhost:5000/api/reports/${reportId}`, {
         method: 'DELETE',
@@ -472,99 +535,95 @@
           'x-auth-token': token
         }
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.message || 'Error deleting report');
       }
-      
-      const data = await response.json();
-      alert('Report deleted!');
+
+      showToast('Report deleted!', 'success');
       fetchReports();
     } catch (err) {
       console.error(err);
-      alert('Failed to delete report: ' + err.message);
+      showToast('Failed to delete report: ' + err.message, 'error');
     }
   }
 
-  // 8. Modal Edit Form Setup
+  /* ==========================
+     9) Modal Edit Setup
+  ========================== */
   const modal = document.getElementById("editModal");
-const closeBtn = document.querySelector(".close");
-const cancelBtn = document.getElementById("cancelEdit");
-const editForm = document.getElementById("editForm");
+  const closeBtn = document.querySelector(".close");
+  const cancelBtn = document.getElementById("cancelEdit");
+  const editForm = document.getElementById("editForm");
 
-closeBtn.onclick = () => modal.style.display = "none";
-cancelBtn.onclick = () => modal.style.display = "none";
+  closeBtn.onclick = () => modal.style.display = "none";
+  cancelBtn.onclick = () => modal.style.display = "none";
 
-window.onclick = (event) => {
-  if (event.target === modal) {
-    modal.style.display = "none";
-  }
-};
-
-// Function to open edit modal and populate with report data
-function handleEditReport(report) {
-  console.log("Editing report:", report);
-  
-  // Fill the form with current values
-  document.getElementById("editReportId").value = report._id;
-  document.getElementById("editTitle").value = report.title;
-  document.getElementById("editDescription").value = report.description;
-  document.getElementById("editCategory").value = report.category;
-  
-  // Show the modal
-  modal.style.display = "block";
-}
-  
-  // Form submission handler
-  editForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  
-  const reportId = document.getElementById("editReportId").value;
-  const updatedReport = {
-    title: document.getElementById("editTitle").value,
-    description: document.getElementById("editDescription").value,
-    category: document.getElementById("editCategory").value
+  window.onclick = (event) => {
+    if (event.target === modal) {
+      modal.style.display = "none";
+    }
   };
-  
-  try {
-    const response = await fetch(`http://localhost:5000/api/reports/${reportId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json', // This is crucial
-        'x-auth-token': token
-      },
-      body: JSON.stringify(updatedReport) // Must use JSON.stringify
-    });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to update report');
-    }
+  function handleEditReport(report) {
+    document.getElementById("editReportId").value = report._id;
+    document.getElementById("editTitle").value = report.title;
+    document.getElementById("editDescription").value = report.description;
+    document.getElementById("editCategory").value = report.category;
 
-    const data = await response.json();
-    alert('Report updated successfully!');
-    modal.style.display = "none";
-    fetchReports();
-  } catch (err) {
-    console.error("Update error:", err);
-    alert('Failed to update report: ' + err.message);
+    modal.style.display = "block";
   }
-});
-  
-    // 9. Logout function
-    function logout() {
-      localStorage.removeItem('token');
-      window.location.href = 'login.html';
+
+  // Sauvegarde du formulaire d'édition
+  editForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const reportId = document.getElementById("editReportId").value;
+    const updatedReport = {
+      title: document.getElementById("editTitle").value.trim(),
+      description: document.getElementById("editDescription").value.trim(),
+      category: document.getElementById("editCategory").value
+    };
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/reports/${reportId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token
+        },
+        body: JSON.stringify(updatedReport)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update report');
+      }
+
+      showToast('Report updated successfully!', 'success');
+      modal.style.display = "none";
+      fetchReports();
+    } catch (err) {
+      console.error("Update error:", err);
+      showToast('Failed to update report: ' + err.message, 'error');
     }
-  
-    // Optional: Add a logout button to the sidebar
-    const logoutBtn = document.createElement('button');
-    logoutBtn.textContent = 'Logout';
-    logoutBtn.className = 'btn btn-logout';
-    logoutBtn.style.marginTop = '1rem';
-    logoutBtn.addEventListener('click', logout);
-    document.getElementById('sidebar').appendChild(logoutBtn);
+  });
+
+  /* ==========================
+     10) Logout
+  ========================== */
+  function logout() {
+    localStorage.removeItem('token');
+    window.location.href = 'login.html';
+  }
+  const logoutBtn = document.createElement('button');
+  logoutBtn.textContent = 'Logout';
+  logoutBtn.className = 'btn';
+  logoutBtn.style.marginTop = '1rem';
+  logoutBtn.style.backgroundColor = '#666';
+  logoutBtn.style.color = '#fff';
+  logoutBtn.addEventListener('click', logout);
+  document.getElementById('sidebar').appendChild(logoutBtn);
 </script>
 </body>
 </html>
