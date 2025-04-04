@@ -66,7 +66,6 @@ describe('Test Report API', () => {
 
     afterAll(async () => {
         await mongoose.connection.close();
-        process.exit(0); 
       });
       
       
