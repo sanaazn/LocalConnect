@@ -12,6 +12,7 @@ const getReports = async (req, res) => {
 const createReport = async (req, res) => {
   try {
     const { title, description, category, location, timestamp } = req.body;
+    console.log(req.user);  // Check if userId is attached to req.user
 
     const report = await Report.create({
       title,
@@ -19,7 +20,7 @@ const createReport = async (req, res) => {
       category,
       location,
       timestamp,
-      createdBy: req.user.userId
+      createdBy: req.user.userId  // The userId from the JWT token
     });
 
     res.status(201).json(report);
@@ -27,6 +28,7 @@ const createReport = async (req, res) => {
     res.status(500).json({ message: 'Error creating report', error: err.message });
   }
 };
+
 
 const deleteReport = async (req, res) => {
   try {

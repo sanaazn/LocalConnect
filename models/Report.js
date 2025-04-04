@@ -6,7 +6,7 @@ const reportSchema = new mongoose.Schema({
   category: { type: String, enum: ['alert', 'tip', 'info'] },
   location: {
     type: { type: String, enum: ['Point'], required: true },
-    coordinates: { type: [Number], required: true },
+    coordinates: { type: [mongoose.Decimal128], required: true },
   },
   timestamp: { type: Date, default: Date.now },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
