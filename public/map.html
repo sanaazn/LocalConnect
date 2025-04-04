@@ -15,51 +15,64 @@
   <script>
     const token = localStorage.getItem("token");
 
-if (!token) {
-  alert("You need to log in first!");
-  window.location.href = "login.html";  // Redirect to login if token is not available
-} else {
-  // Use the token to fetch reports or add a new one
-  fetchReports();
-}
-
-async function fetchReports() {
-  try {
-    const response = await fetch("http://localhost:5000/api/reports", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "x-auth-token": token,  // Include the JWT token
-      },
-    });
-
-    const reports = await response.json();
-    
-    if (response.ok) {
-      console.log(reports);  // Do something with the reports (e.g., display them on the map)
+    if (!token) {
+      alert("You need to log in first!");
+      window.location.href = "login.html";  // Redirect to login if token is not available
     } else {
-      alert(reports.message || "Failed to fetch reports");
+      // Use the token to fetch reports or add a new one
+      fetchReports();
     }
-  } catch (err) {
-    console.error("Error fetching reports:", err);
-    alert("An error occurred while fetching reports");
-  }
-}
-    const map = L.map('map').setView([45.7640, 4.8357], 13); // Center on Lyon
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+    let map; // Declare map variable outside of the function to reuse it
 
-    fetch('/api/reports')
-      .then(res => res.json())
-      .then(data => {
-        data.forEach(report => {
-          const { coordinates } = report.location;
-          const popup = `<b>${report.title}</b><br>${report.description}<br><i>${report.category}</i>`;
-          L.marker([coordinates[1], coordinates[0]]).addTo(map).bindPopup(popup);
+    async function fetchReports() {
+      try {
+        const response = await fetch("http://localhost:5000/api/reports", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "x-auth-token": token,  // Include the JWT token
+          },
         });
+
+        const reports = await response.json();
+        
+        if (response.ok) {
+          console.log(reports);  // Do something with the reports (e.g., display them on the map)
+          drawReportsOnMap(reports);
+        } else {
+          alert(reports.message || "Failed to fetch reports");
+        }
+      } catch (err) {
+        console.error("Error fetching reports:", err);
+        alert("An error occurred while fetching reports");
+      }
+    }
+
+    function drawReportsOnMap(reports) {
+      if (!map) {
+        // Initialize the map only if it's not already initialized
+        map = L.map('map').setView([45.7640, 4.8357], 13); // Center on Lyon
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+      }
+
+      reports.forEach(report => {
+        const { coordinates } = report.location;
+        const latitude = parseFloat(coordinates[1]["$numberDecimal"]);  // Convert to float
+        const longitude = parseFloat(coordinates[0]["$numberDecimal"]);  // Convert to float
+        
+        // Ensure coordinates are valid
+        if (!isNaN(latitude) && !isNaN(longitude)) {
+          const popup = `<b>${report.title}</b><br>${report.description}<br><i>${report.category}</i>`;
+          L.marker([latitude, longitude]).addTo(map).bindPopup(popup);
+        } else {
+          console.warn('Invalid coordinates for report:', report);
+        }
       });
+    }
   </script>
 </body>
 </html>
